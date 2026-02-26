@@ -35,6 +35,9 @@ pub struct AndroidSettings {
 pub struct ApnsSettings {
     /// 우선순위: "10" (high) 또는 "5" (normal)
     pub priority: String,
+    /// 사운드: "default" 또는 커스텀 사운드 파일명
+    #[serde(default)]
+    pub sound: Option<String>,
 }
 
 /// FCM 발송 요청

@@ -76,7 +76,8 @@
           channelId: androidChannelId.trim()
         },
         apns: {
-          priority: "10"
+          priority: "10",
+          sound: "default"
         }
       }
 

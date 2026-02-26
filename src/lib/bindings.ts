@@ -132,7 +132,11 @@ export type ApnsSettings = {
 /**
  * 우선순위: "10" (high) 또는 "5" (normal)
  */
-priority: string }
+priority: string; 
+/**
+ * 사운드: "default" 또는 커스텀 사운드 파일명
+ */
+sound?: string | null }
 /**
  * OAuth 인증 결과
  */

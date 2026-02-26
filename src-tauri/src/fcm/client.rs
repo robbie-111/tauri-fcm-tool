@@ -53,12 +53,24 @@ struct AndroidNotification {
 #[derive(Debug, Serialize)]
 struct ApnsConfig {
     headers: ApnsHeaders,
+    payload: ApnsPayload,
 }
 
 #[derive(Debug, Serialize)]
 struct ApnsHeaders {
     #[serde(rename = "apns-priority")]
     apns_priority: String,
+}
+
+#[derive(Debug, Serialize)]
+struct ApnsPayload {
+    aps: ApnsAps,
+}
+
+#[derive(Debug, Serialize)]
+struct ApnsAps {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sound: Option<String>,
 }
 
 /// FCM API 응답
@@ -136,6 +148,11 @@ impl FcmClient {
                     headers: ApnsHeaders {
                         apns_priority: a.priority.clone(),
                     },
+                    payload: ApnsPayload {
+                        aps: ApnsAps {
+                            sound: a.sound.clone(),
+                        },
+                    },
                 }),
             },
         };
@@ -167,6 +184,11 @@ impl FcmClient {
                 apns: request.apns.as_ref().map(|a| ApnsConfig {
                     headers: ApnsHeaders {
                         apns_priority: a.priority.clone(),
+                    },
+                    payload: ApnsPayload {
+                        aps: ApnsAps {
+                            sound: a.sound.clone(),
+                        },
                     },
                 }),
             },
