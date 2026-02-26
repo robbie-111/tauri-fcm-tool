@@ -16,6 +16,7 @@
   let isLoading = $state(false)
   let result = $state("")
   let resultType = $state<"success" | "error" | "">("")
+  let requestJson = $state("")
 
   // Android Channel ID (기본값: perbase_noti)
   let androidChannelId = $state("perbase_noti")
@@ -62,9 +63,10 @@
 
     isLoading = true
     result = ""
+    requestJson = ""
 
     try {
-      const res = await commands.sendFcmMessage({
+      const request = {
         messageType: messageType,
         message: { title: title.trim(), body: body.trim() },
         token: messageType === "single" ? token.trim() : null,
@@ -76,7 +78,12 @@
         apns: {
           priority: "10"
         }
-      })
+      }
+
+      // FCM Request JSON 저장
+      requestJson = JSON.stringify(request, null, 2)
+
+      const res = await commands.sendFcmMessage(request)
 
       if (res.status === "ok") {
         if (res.data.success) {
@@ -112,7 +119,17 @@
     body = ""
     result = ""
     resultType = ""
+    requestJson = ""
     androidChannelId = "perbase_noti"
+  }
+
+  function highlightJson(json: string): string {
+    return json
+      .replace(/"([^"]+)":/g, '<span class="text-green-400">"$1"</span>:')
+      .replace(/: "([^"]*)"/g, ': <span class="text-yellow-400">"$1"</span>')
+      .replace(/: (\d+)/g, ': <span class="text-purple-400">$1</span>')
+      .replace(/: null/g, ': <span class="text-gray-500">null</span>')
+      .replace(/: (true|false)/g, ': <span class="text-purple-400">$1</span>')
   }
 </script>
 
@@ -230,6 +247,14 @@
       <p class="text-sm {resultType === 'success' ? 'text-success-500' : 'text-error-500'}">
         {result}
       </p>
+    </div>
+  {/if}
+
+  <!-- FCM Request JSON -->
+  {#if result && requestJson}
+    <div class="card p-4 preset-filled-surface-200-800 mt-4">
+      <h3 class="font-medium mb-2">FCM Request JSON</h3>
+      <pre class="text-xs overflow-x-auto whitespace-pre-wrap bg-surface-900 p-3 rounded text-gray-300">{@html highlightJson(requestJson)}</pre>
     </div>
   {/if}
 </div>

@@ -9,6 +9,13 @@
     firebaseProjectId: ""
   })
 
+  // Firebase 프로젝트 설정 분리
+  let environment = $state<"dev" | "qa">("dev")
+  let projectName = $state("")
+
+  // 테마 설정
+  let theme = $state<"system" | "light" | "dark">("system")
+
   let isAuthenticated = $state(false)
   let isLoading = $state(false)
   let message = $state("")
@@ -17,6 +24,7 @@
   onMount(async () => {
     await loadConfig()
     await checkAuth()
+    loadTheme()
   })
 
   async function loadConfig() {
@@ -24,6 +32,17 @@
       const result = await commands.getConfig()
       if (result.status === "ok") {
         config = result.data
+        // firebaseProjectId에서 환경과 프로젝트명 분리
+        if (config.firebaseProjectId.startsWith("dev-")) {
+          environment = "dev"
+          projectName = config.firebaseProjectId.slice(4)
+        } else if (config.firebaseProjectId.startsWith("qa-")) {
+          environment = "qa"
+          projectName = config.firebaseProjectId.slice(3)
+        } else if (config.firebaseProjectId) {
+          // 기존 형식이 아닌 경우 그대로 프로젝트명으로 사용
+          projectName = config.firebaseProjectId
+        }
       } else {
         showMessage(`설정 로드 실패: ${result.error}`, "error")
       }
@@ -35,6 +54,8 @@
   async function saveConfig() {
     isLoading = true
     try {
+      // 환경과 프로젝트명을 조합하여 firebaseProjectId 설정
+      config.firebaseProjectId = `${environment}-${projectName}`
       const result = await commands.saveConfig(config)
       if (result.status === "ok") {
         showMessage("설정이 저장되었습니다", "success")
@@ -106,6 +127,28 @@
       messageType = ""
     }, 5000)
   }
+
+  function loadTheme() {
+    const savedTheme = localStorage.getItem("theme") as "system" | "light" | "dark" | null
+    if (savedTheme) {
+      theme = savedTheme
+    }
+  }
+
+  function applyTheme(selectedTheme: "system" | "light" | "dark") {
+    const html = document.documentElement
+    if (selectedTheme === "system") {
+      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+      html.classList.toggle("dark", prefersDark)
+    } else {
+      html.classList.toggle("dark", selectedTheme === "dark")
+    }
+    localStorage.setItem("theme", selectedTheme)
+  }
+
+  function handleThemeChange() {
+    applyTheme(theme)
+  }
 </script>
 
 <div class="p-8 max-w-2xl mx-auto">
@@ -120,6 +163,21 @@
     </div>
   {/if}
 
+  <!-- 테마 설정 -->
+  <div class="flex items-center gap-2 mb-6">
+    <label for="theme" class="text-sm opacity-70">Theme:</label>
+    <select 
+      id="theme" 
+      class="select select-sm preset-outlined-surface-500 w-28" 
+      bind:value={theme} 
+      onchange={handleThemeChange}
+    >
+      <option value="system">System</option>
+      <option value="dark">Dark</option>
+      <option value="light">Light</option>
+    </select>
+  </div>
+
   <!-- Firebase 설정 -->
   <section class="card preset-filled-surface-200-800 p-6 mb-6">
     <h2 class="text-lg font-semibold mb-4">Firebase 설정</h2>
@@ -129,66 +187,26 @@
         <label class="block text-sm font-medium mb-1" for="projectId">
           Firebase 프로젝트 ID <span class="text-error-500">*</span>
         </label>
-        <input
-          id="projectId"
-          type="text"
-          class="input w-full"
-          placeholder="your-project-id"
-          bind:value={config.firebaseProjectId}
-        />
-        <p class="text-xs opacity-50 mt-1">Firebase Console에서 확인할 수 있습니다</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- OAuth 설정 -->
-  <section class="card preset-filled-surface-200-800 p-6 mb-6">
-    <h2 class="text-lg font-semibold mb-4">OAuth 2.0 설정</h2>
-    
-    <div class="space-y-4">
-      <div>
-        <label class="block text-sm font-medium mb-1" for="clientId">
-          OAuth 클라이언트 ID <span class="text-error-500">*</span>
-        </label>
-        <input
-          id="clientId"
-          type="text"
-          class="input w-full"
-          placeholder="xxxxx.apps.googleusercontent.com"
-          bind:value={config.oauthClientId}
-        />
-        <p class="text-xs opacity-50 mt-1">Google Cloud Console에서 "데스크톱 앱" 유형으로 생성</p>
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1" for="redirectUrl">
-          리다이렉트 URL
-        </label>
-        <input
-          id="redirectUrl"
-          type="text"
-          class="input w-full"
-          bind:value={config.oauthRedirectUrl}
-        />
-      </div>
-
-      <div>
-        <label class="block text-sm font-medium mb-1" for="exchangeUrl">
-          토큰 교환 API URL <span class="text-error-500">*</span>
-        </label>
-        <input
-          id="exchangeUrl"
-          type="text"
-          class="input w-full"
-          bind:value={config.exchangeCodeUrl}
-        />
-        <p class="text-xs opacity-50 mt-1">외부 서버에서 토큰 교환을 처리하는 API URL</p>
+        <div class="flex gap-2">
+          <select class="select w-24" bind:value={environment}>
+            <option value="dev">dev</option>
+            <option value="qa">qa</option>
+          </select>
+          <input
+            id="projectId"
+            type="text"
+            class="input flex-1"
+            placeholder="프로젝트명 (예: gamebase)"
+            bind:value={projectName}
+          />
+        </div>
+        <p class="text-xs opacity-50 mt-1">환경 접두사와 프로젝트명이 조합되어 저장됩니다 (예: {environment}-{projectName || "gamebase"})</p>
       </div>
     </div>
   </section>
 
   <!-- 저장 버튼 -->
-  <div class="flex justify-end mb-8">
+  <div class="flex justify-end mb-6">
     <button
       class="btn preset-filled-primary-500"
       onclick={saveConfig}
@@ -199,7 +217,7 @@
   </div>
 
   <!-- 인증 상태 -->
-  <section class="card preset-filled-surface-200-800 p-6">
+  <section class="card preset-filled-surface-200-800 p-6 mb-6">
     <h2 class="text-lg font-semibold mb-4">인증 상태</h2>
     
     <div class="flex items-center justify-between">
@@ -220,17 +238,63 @@
         <button
           class="btn preset-filled-primary-500"
           onclick={handleLogin}
-          disabled={isLoading || !config.oauthClientId || !config.firebaseProjectId}
+          disabled={isLoading || !config.oauthClientId || !projectName}
         >
           {isLoading ? "인증 중..." : "Google 계정으로 로그인"}
         </button>
       {/if}
     </div>
 
-    {#if !isAuthenticated && (!config.oauthClientId || !config.firebaseProjectId)}
+    {#if !isAuthenticated && (!config.oauthClientId || !projectName)}
       <p class="text-xs text-warning-500 mt-3">
         로그인하려면 먼저 위의 필수 설정을 완료하고 저장해주세요
       </p>
     {/if}
+  </section>
+
+  <!-- OAuth 설정 -->
+  <section class="card preset-filled-surface-200-800 p-6">
+    <h2 class="text-lg font-semibold mb-4">OAuth 2.0 설정</h2>
+    
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium mb-1 opacity-60" for="clientId">
+          OAuth 클라이언트 ID
+        </label>
+        <input
+          id="clientId"
+          type="text"
+          class="input w-full opacity-60 cursor-not-allowed"
+          value={config.oauthClientId}
+          disabled
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1 opacity-60" for="redirectUrl">
+          리다이렉트 URL
+        </label>
+        <input
+          id="redirectUrl"
+          type="text"
+          class="input w-full opacity-60 cursor-not-allowed"
+          value={config.oauthRedirectUrl}
+          disabled
+        />
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1 opacity-60" for="exchangeUrl">
+          토큰 교환 API URL
+        </label>
+        <input
+          id="exchangeUrl"
+          type="text"
+          class="input w-full opacity-60 cursor-not-allowed"
+          value={config.exchangeCodeUrl}
+          disabled
+        />
+      </div>
+    </div>
   </section>
 </div>
