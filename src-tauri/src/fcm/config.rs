@@ -18,7 +18,9 @@ pub struct FcmConfig {
 impl Default for FcmConfig {
     fn default() -> Self {
         Self {
-            oauth_client_id: String::new(),
+            oauth_client_id:
+                "236719897156-fa7r2jko9e7es6t5nrreos1p66o2vpal.apps.googleusercontent.com"
+                    .to_string(),
             oauth_redirect_url: "http://localhost:8080/callback".to_string(),
             exchange_code_url: "https://percent-config.111percent.net/ExchangeAuthorizationCode"
                 .to_string(),
